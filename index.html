@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persoonlijke Budget App</title>
+    
+    <!-- Tailwind CSS voor styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js voor de grafiek -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Basisstijlen voor een donker thema */
+        body {
+            background-color: #111827; /* gray-900 */
+            color: #e5e7eb; /* gray-200 */
+            font-family: sans-serif;
+        }
+        /* Zorg ervoor dat iconen de juiste grootte en kleur hebben */
+        .lucide-icon {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            stroke-width: 2;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Stijlen voor de bevestigingsmodal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        /* Print-specifieke stijlen */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+            }
+
+            * {
+                color: #000000 !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+            
+            .print-card {
+                 border: 1px solid #ccc !important;
+            }
+
+            header, footer, #chart-switch, button[data-action], .modal-overlay, .flex.flex-wrap.gap-2.mb-6 {
+                display: none !important;
+            }
+
+            section {
+                display: block !important;
+            }
+
+            .grid {
+                display: block !important;
+            }
+            
+            .grid > * {
+                page-break-inside: avoid;
+                margin-bottom: 1.5rem;
+            }
+
+            .relative.flex-grow.min-h-0 {
+                display: block !important;
+                height: auto !important;
+                min-height: auto !important;
+            }
+
+            /* Zorg ervoor dat alle grafieken zichtbaar zijn bij het printen */
+            #chart-wrapper-incomes, #chart-wrapper-details, #chart-wrapper-summary {
+                position: static !important;
+                display: flex !important;
+                flex-direction: column;
+                margin-bottom: 2rem;
+                page-break-inside: avoid;
+            }
+
+            .chart-legend-container {
+                display: block !important;
+            }
+            .chart-legend-container > .relative {
+                margin-bottom: 1rem;
+            }
+            
+            /* Verbeterde lijstweergave voor printen */
+            li.bg-gray-700 {
+                padding: 0.5rem 0.25rem !important;
+                border-bottom: 1px solid #ddd !important;
+                border-radius: 0 !important;
+            }
+
+            li.bg-gray-700:last-child {
+                border-bottom: none !important;
+            }
+
+            @page {
+                margin: 0.75in;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+                Financieel Overzicht
+            </h1>
+            <p class="text-gray-400 mt-2 text-lg">Krijg grip op je geld en begin met sparen voor je toekomst.</p>
+        </header>
+
+        <main>
+            <!-- Bovenste sectie: Samenvatting & Grafieken -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Samenvatting Kaarten -->
+                <div class="space-y-6">
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-semibold text-gray-400 mb-2">Totaal Inkomen (Maandelijks)</h3>
+                        <div id="income-display" class="flex items-center justify-between">
+                            <p id="total-income" class="text-3xl font-bold text-green-400">€0.00</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-semibold text-gray-400 mb-2">Totale Uitgaven</h3>
+                        <p id="total-expenses" class="text-3xl font-bold text-red-400">€0.00</p>
+                    </div>
+                    <div id="savings-card" class="p-6 rounded-lg shadow-lg bg-green-900/50">
+                        <h3 class="text-lg font-semibold text-gray-300 mb-2">Potentiële Besparing</h3>
+                        <p id="savings-total" class="text-3xl font-bold text-green-300">€0.00</p>
+                        <p class="text-sm text-gray-400 mt-1">Per maand</p>
+                    </div>
+                </div>
+                <!-- Grafieken Container -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col">
+                    <div class="flex-shrink-0">
+                        <div class="flex justify-center mb-4 bg-gray-700 rounded-lg p-1" id="chart-switch">
+                            <button data-chart="incomes" class="chart-button px-4 py-2 rounded-md transition-colors text-sm sm:text-base w-1/3 text-gray-300 hover:bg-gray-600">Inkomsten</button>
+                            <button data-chart="details" class="chart-button px-4 py-2 rounded-md transition-colors text-sm sm:text-base w-1/3 bg-blue-600 text-white font-semibold">Details Uitgaven</button>
+                            <button data-chart="summary" class="chart-button px-4 py-2 rounded-md transition-colors text-sm sm:text-base w-1/3 text-gray-300 hover:bg-gray-600">Hoofdgroepen</button>
+                        </div>
+                    </div>
+                    <div class="relative flex-grow min-h-0">
+                        <!-- Incomes Chart + Legend -->
+                        <div id="chart-wrapper-incomes" class="absolute inset-0 flex-col hidden">
+                            <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Inkomsten Verdeling</h3>
+                            <div class="flex-grow grid grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
+                                <div class="relative h-full">
+                                    <canvas id="incomes-chart"></canvas>
+                                </div>
+                                <div id="legend-incomes" class="text-sm space-y-1 overflow-y-auto max-h-full pr-2"></div>
+                            </div>
+                        </div>
+                        <!-- Details Chart + Legend -->
+                        <div id="chart-wrapper-details" class="absolute inset-0 flex flex-col">
+                            <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Details Alle Uitgaven</h3>
+                            <div class="flex-grow grid grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
+                                <div class="relative h-full">
+                                    <canvas id="all-expenses-detail-chart"></canvas>
+                                </div>
+                                <div id="legend-details" class="text-sm space-y-1 overflow-y-auto max-h-full pr-2"></div>
+                            </div>
+                        </div>
+                        <!-- Summary Chart + Legend -->
+                        <div id="chart-wrapper-summary" class="absolute inset-0 flex-col hidden">
+                            <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Uitgaven Hoofdgroepen</h3>
+                            <div class="flex-grow grid grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
+                                <div class="relative h-full">
+                                    <canvas id="expenses-chart"></canvas>
+                                </div>
+                                <div id="legend-summary" class="text-sm space-y-1 overflow-y-auto max-h-full pr-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Onderste sectie: Inkomsten & Kostenlijsten -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div id="content-inkomsten"></div>
+                <div id="content-vaste"></div>
+                <div id="content-variabele"></div>
+                <div id="content-abonnementen"></div>
+            </section>
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>Gemaakt om je te helpen je financiële doelen te bereiken.</p>
+            <p class="mb-4">Je woont in Zoetermeer en hebt een vast contract. Dit is een sterke basis!</p>
+            <div class="flex justify-center gap-4">
+                <button id="print-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    Print Overzicht
+                </button>
+                <button id="reset-data-btn" class="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    Reset Alle Gegevens
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="reset-modal" class="modal-overlay hidden">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h3 class="text-xl font-bold text-white mb-4">Weet je het zeker?</h3>
+            <p class="text-gray-300 mb-6">Alle opgeslagen inkomsten en uitgaven worden permanent verwijderd.</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Ja, reset</button>
+                <button id="cancel-reset-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE ---
+            let state;
+
+            // --- LOCALSTORAGE FUNCTIES ---
+            const saveState = () => {
+                localStorage.setItem('budgetAppState', JSON.stringify(state));
+            };
+
+            const getDefaultState = () => ({
+                incomes: [
+                     { id: 1, name: 'Salaris', amount: 2500, isEditing: false },
+                     { id: 2, name: 'Teruggave Belastingdienst', amount: 85, isEditing: false }
+                ],
+                fixedCosts: [
+                    { id: 1, name: 'Huur Appartement', amount: 1100, isEditing: false },
+                    { id: 2, name: 'Gas, Water & Licht', amount: 150, isEditing: false },
+                    { id: 3, name: 'Internet & TV', amount: 50, isEditing: false },
+                    { id: 4, name: 'Mobiel abonnement', amount: 25, isEditing: false },
+                    { id: 5, name: 'Zorgverzekering', amount: 145, isEditing: false },
+                    { id: 6, name: 'Gemeentelijke heffingen', amount: 40, isEditing: false }
+                ],
+                variableCosts: [],
+                subscriptions: [],
+                activeChart: 'details'
+            });
+
+            const loadState = () => {
+                const savedStateJSON = localStorage.getItem('budgetAppState');
+                if (savedStateJSON) {
+                    try {
+                        const savedState = JSON.parse(savedStateJSON);
+                        if (savedState && Array.isArray(savedState.incomes)) {
+                            const ensureEditingFalse = (item) => item.isEditing = false;
+                            savedState.incomes.forEach(ensureEditingFalse);
+                            savedState.fixedCosts.forEach(ensureEditingFalse);
+                            savedState.variableCosts.forEach(ensureEditingFalse);
+                            savedState.subscriptions.forEach(ensureEditingFalse);
+                            state = savedState;
+                            return;
+                        }
+                    } catch (e) {
+                        console.error("Kon opgeslagen data niet laden, gebruik standaardwaarden.", e);
+                    }
+                }
+                state = getDefaultState();
+            };
+
+            loadState();
+
+            // --- DOM ELEMENTS ---
+            const mainContainer = document.querySelector('main');
+            const incomesChartCanvas = document.getElementById('incomes-chart');
+            const expensesChartCanvas = document.getElementById('expenses-chart');
+            const allExpensesDetailChartCanvas = document.getElementById('all-expenses-detail-chart');
+            const chartSwitch = document.getElementById('chart-switch');
+            const resetModal = document.getElementById('reset-modal');
+            let incomesChartInstance = null;
+            let expensesChartInstance = null;
+            let allExpensesDetailChartInstance = null;
+
+            // --- RENDER FUNCTIONS ---
+            
+            const render = () => {
+                saveState();
+                updateSummary();
+                renderLists();
+                updateChartVisibility();
+                lucide.createIcons();
+            };
+
+            const updateSummary = () => {
+                const totalIncome = state.incomes.reduce((sum, item) => sum + item.amount, 0);
+                const totalFixed = state.fixedCosts.reduce((sum, item) => sum + item.amount, 0);
+                const totalVariable = state.variableCosts.reduce((sum, item) => sum + item.amount, 0);
+                const totalSubs = state.subscriptions.reduce((sum, item) => sum + item.amount, 0);
+                const totalExpenses = totalFixed + totalVariable + totalSubs;
+                const savings = totalIncome - totalExpenses;
+
+                document.getElementById('total-income').textContent = `€${totalIncome.toFixed(2)}`;
+                document.getElementById('total-expenses').textContent = `€${totalExpenses.toFixed(2)}`;
+                document.getElementById('savings-total').textContent = `€${savings.toFixed(2)}`;
+
+                const savingsCard = document.getElementById('savings-card');
+                const savingsTotal = document.getElementById('savings-total');
+                savingsCard.className = `p-6 rounded-lg shadow-lg ${savings >= 0 ? 'bg-green-900/50' : 'bg-red-900/50'} print-card`;
+                savingsTotal.className = `text-3xl font-bold ${savings >= 0 ? 'text-green-300' : 'text-red-300'}`;
+            };
+
+            const createListHTML = (title, items, category) => {
+                const itemsHTML = items.map(item => {
+                    if (item.isEditing) {
+                        return `
+                            <li data-id="${item.id}" class="bg-gray-600 p-3 rounded-md flex flex-col gap-2">
+                                <input type="text" value="${item.name}" name="edit-name" class="bg-gray-700 text-white p-2 rounded-md w-full">
+                                <div class="flex gap-2">
+                                    <input type="number" value="${item.amount}" name="edit-amount" class="bg-gray-700 text-white p-2 rounded-md w-full">
+                                    <button data-action="save" class="text-green-400 hover:text-green-300 p-2"><i data-lucide="save" class="lucide-icon"></i></button>
+                                    <button data-action="cancel" class="text-gray-400 hover:text-gray-300 p-2"><i data-lucide="x-circle" class="lucide-icon"></i></button>
+                                </div>
+                            </li>
+                        `;
+                    } else {
+                        return `
+                            <li data-id="${item.id}" class="bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                                <span class="text-white">${item.name}</span>
+                                <div class="flex items-center gap-4">
+                                    <span class="font-semibold text-white">€${item.amount.toFixed(2)}</span>
+                                    <div class="flex gap-2">
+                                        <button data-action="edit" class="text-blue-400 hover:text-blue-300"><i data-lucide="edit" class="lucide-icon"></i></button>
+                                        <button data-action="delete" class="text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="lucide-icon"></i></button>
+                                    </div>
+                                </div>
+                            </li>
+                        `;
+                    }
+                }).join('');
+
+                return `
+                    <div data-category="${category}" class="bg-gray-800 p-6 rounded-lg shadow-lg h-full print-card">
+                        <h2 class="text-2xl font-bold text-white mb-4">${title}</h2>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <input type="text" placeholder="Omschrijving" class="flex-auto bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="name" style="min-width: 8rem;">
+                            <input type="number" placeholder="Bedrag" class="w-24 bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="amount">
+                            <button data-action="add" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md flex items-center justify-center">
+                                <i data-lucide="plus-circle" class="lucide-icon"></i>
+                            </button>
+                        </div>
+                        <ul class="space-y-3">${itemsHTML}</ul>
+                    </div>
+                `;
+            };
+
+            const renderLists = () => {
+                document.getElementById('content-inkomsten').innerHTML = createListHTML('Inkomsten', state.incomes, 'incomes');
+                document.getElementById('content-vaste').innerHTML = createListHTML('Vaste Lasten', state.fixedCosts, 'fixedCosts');
+                document.getElementById('content-variabele').innerHTML = createListHTML('Variabele Kosten', state.variableCosts, 'variableCosts');
+                document.getElementById('content-abonnementen').innerHTML = createListHTML('Abonnementen', state.subscriptions, 'subscriptions');
+            };
+
+            const getChartOptions = () => ({
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 0 // disable animations for printing
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => ` ${context.label}: ${new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(context.parsed)}`
+                        }
+                    }
+                }
+            });
+            
+            const drawEmptyChartText = (canvas, text) => {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '16px sans-serif';
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+                ctx.restore();
+            };
+
+            const updateLegend = (legendId, legendData) => {
+                const legendContainer = document.getElementById(legendId);
+                if (!legendContainer) return;
+
+                legendContainer.innerHTML = ''; // Clear previous legend
+
+                if (legendData.length === 0) {
+                    return;
+                }
+
+                const legendHTML = legendData.map(item => `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center min-w-0">
+                            <span class="w-3 h-3 rounded-full mr-2 flex-shrink-0" style="background-color: ${item.color};"></span>
+                            <span class="truncate" title="${item.label}">${item.label}</span>
+                        </div>
+                        <span class="font-semibold flex-shrink-0">${item.percentage.toFixed(1)}%</span>
+                    </div>
+                `).join('');
+
+                legendContainer.innerHTML = legendHTML;
+            };
+
+            const updateIncomesChart = () => {
+                if (incomesChartInstance) incomesChartInstance.destroy();
+                const totalIncome = state.incomes.reduce((s, i) => s + i.amount, 0);
+                const colors = ['#4ade80', '#86efac', '#bbf7d0', '#dcfce7', '#22c55e', '#16a34a'];
+
+                const legendData = state.incomes.map((item, index) => ({
+                    label: item.name,
+                    value: item.amount,
+                    percentage: totalIncome > 0 ? (item.amount / totalIncome) * 100 : 0,
+                    color: colors[index % colors.length]
+                })).sort((a, b) => b.value - a.value);
+
+                updateLegend('legend-incomes', legendData);
+                
+                const data = {
+                    labels: legendData.map(i => i.label),
+                    datasets: [{
+                        data: legendData.map(i => i.value),
+                        backgroundColor: legendData.map(i => i.color),
+                        borderColor: '#1f2937', borderWidth: 2, hoverOffset: 4
+                    }]
+                };
+                
+                setTimeout(() => {
+                    if (state.incomes.length > 0) {
+                        incomesChartInstance = new Chart(incomesChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                    } else {
+                        drawEmptyChartText(incomesChartCanvas, 'Voeg inkomsten toe.');
+                        updateLegend('legend-incomes', []);
+                    }
+                }, 0);
+            };
+
+            const updateExpensesChart = () => {
+                if (expensesChartInstance) expensesChartInstance.destroy();
+                const expensesData = [
+                    { label: 'Vaste Lasten', value: state.fixedCosts.reduce((s, i) => s + i.amount, 0) },
+                    { label: 'Variabele Kosten', value: state.variableCosts.reduce((s, i) => s + i.amount, 0) },
+                    { label: 'Abonnementen', value: state.subscriptions.reduce((s, i) => s + i.amount, 0) }
+                ].filter(item => item.value > 0);
+
+                const totalExpenses = expensesData.reduce((s, i) => s + i.value, 0);
+                const colors = ['#0088FE', '#00C49F', '#FFBB28'];
+
+                const legendData = expensesData.map((item, index) => ({
+                    ...item,
+                    percentage: totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0,
+                    color: colors[index % colors.length]
+                })).sort((a, b) => b.value - a.value);
+
+                updateLegend('legend-summary', legendData);
+
+                const data = {
+                    labels: legendData.map(i => i.label),
+                    datasets: [{
+                        data: legendData.map(i => i.value),
+                        backgroundColor: legendData.map(i => i.color),
+                        borderColor: '#1f2937', borderWidth: 2, hoverOffset: 4
+                    }]
+                };
+                
+                setTimeout(() => {
+                    if (data.datasets[0].data.some(v => v > 0)) {
+                        expensesChartInstance = new Chart(expensesChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                    } else {
+                        drawEmptyChartText(expensesChartCanvas, 'Voeg uitgaven toe.');
+                        updateLegend('legend-summary', []);
+                    }
+                }, 0);
+            };
+
+            const updateAllExpensesDetailChart = () => {
+                if (allExpensesDetailChartInstance) allExpensesDetailChartInstance.destroy();
+                const allExpenses = [...state.fixedCosts, ...state.variableCosts, ...state.subscriptions];
+                const totalExpenses = allExpenses.reduce((s, i) => s + i.amount, 0);
+                const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED', '#7A7A7A'];
+
+                const legendData = allExpenses.map((item, index) => ({
+                    label: item.name,
+                    value: item.amount,
+                    percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
+                    color: colors[index % colors.length]
+                })).sort((a, b) => b.value - a.value);
+
+                updateLegend('legend-details', legendData);
+
+                const data = {
+                    labels: legendData.map(i => i.label),
+                    datasets: [{
+                        data: legendData.map(i => i.value),
+                        backgroundColor: legendData.map(i => i.color),
+                        borderColor: '#1f2937', borderWidth: 2, hoverOffset: 4
+                    }]
+                };
+
+                setTimeout(() => {
+                    if (allExpenses.length > 0) {
+                        allExpensesDetailChartInstance = new Chart(allExpensesDetailChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                    } else {
+                        drawEmptyChartText(allExpensesDetailChartCanvas, 'Geen uitgaven gevonden.');
+                        updateLegend('legend-details', []);
+                    }
+                }, 0);
+            };
+
+            const updateChartVisibility = () => {
+                const incomesVisible = state.activeChart === 'incomes';
+                const detailsVisible = state.activeChart === 'details';
+                const summaryVisible = state.activeChart === 'summary';
+
+                document.getElementById('chart-wrapper-incomes').classList.toggle('hidden', !incomesVisible);
+                document.getElementById('chart-wrapper-details').classList.toggle('hidden', !detailsVisible);
+                document.getElementById('chart-wrapper-summary').classList.toggle('hidden', !summaryVisible);
+                
+                // Show the parent flex container
+                if (incomesVisible) document.getElementById('chart-wrapper-incomes').classList.add('flex');
+                if (detailsVisible) document.getElementById('chart-wrapper-details').classList.add('flex');
+                if (summaryVisible) document.getElementById('chart-wrapper-summary').classList.add('flex');
+
+                chartSwitch.querySelectorAll('.chart-button').forEach(button => {
+                    const isSelected = button.dataset.chart === state.activeChart;
+                    button.classList.toggle('bg-blue-600', isSelected);
+                    button.classList.toggle('text-white', isSelected);
+                    button.classList.toggle('font-semibold', isSelected);
+                    button.classList.toggle('text-gray-300', !isSelected);
+                    button.classList.toggle('hover:bg-gray-600', !isSelected);
+                });
+
+                if (incomesVisible) {
+                    updateIncomesChart();
+                } else if (detailsVisible) {
+                    updateAllExpensesDetailChart();
+                } else {
+                    updateExpensesChart();
+                }
+            };
+
+            // --- EVENT LISTENERS ---
+
+            chartSwitch.addEventListener('click', (e) => {
+                const button = e.target.closest('.chart-button');
+                if (button) {
+                    state.activeChart = button.dataset.chart;
+                    render();
+                }
+            });
+
+            mainContainer.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const action = button.dataset.action;
+                const li = button.closest('li');
+                const id = li ? parseInt(li.dataset.id) : null;
+                const categoryContainer = button.closest('[data-category]');
+                const category = categoryContainer ? categoryContainer.dataset.category : null;
+
+                if (action === 'add' && category) {
+                    const nameInput = categoryContainer.querySelector('input[name="name"]');
+                    const amountInput = categoryContainer.querySelector('input[name="amount"]');
+                    if (nameInput.value && amountInput.value > 0) {
+                        state[category].push({ id: Date.now(), name: nameInput.value, amount: parseFloat(amountInput.value), isEditing: false });
+                        nameInput.value = ''; amountInput.value = '';
+                        render();
+                    }
+                } else if (action === 'delete' && category) {
+                    state[category] = state[category].filter(item => item.id !== id);
+                    render();
+                } else if (action === 'edit' && category) {
+                    state[category].forEach(item => item.isEditing = (item.id === id));
+                    render();
+                } else if (action === 'cancel' && category) {
+                    state[category].find(item => item.id === id).isEditing = false;
+                    render();
+                } else if (action === 'save' && category) {
+                    const item = state[category].find(item => item.id === id);
+                    const newName = li.querySelector('input[name="edit-name"]').value;
+                    const newAmount = parseFloat(li.querySelector('input[name="edit-amount"]').value);
+                    if (item && newName && newAmount > 0) {
+                        item.name = newName;
+                        item.amount = newAmount;
+                        item.isEditing = false;
+                        render();
+                    }
+                }
+            });
+
+            // Reset Modal Listeners
+            document.getElementById('reset-data-btn').addEventListener('click', () => {
+                resetModal.classList.remove('hidden');
+            });
+
+            document.getElementById('cancel-reset-btn').addEventListener('click', () => {
+                resetModal.classList.add('hidden');
+            });
+            
+            resetModal.addEventListener('click', (e) => {
+                if (e.target === resetModal) {
+                    resetModal.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('confirm-reset-btn').addEventListener('click', () => {
+                localStorage.removeItem('budgetAppState');
+                location.reload();
+            });
+
+            // Print button listener
+            document.getElementById('print-btn').addEventListener('click', () => {
+                window.print();
+            });
+            
+            // Re-render all charts before printing
+            window.addEventListener('beforeprint', () => {
+                updateIncomesChart();
+                updateAllExpensesDetailChart();
+                updateExpensesChart();
+            });
+
+
+            // --- INITIAL RENDER ---
+            render();
+        });
+    </script>
+
+</body>
+</html>
