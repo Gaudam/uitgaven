@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Persoonlijke Budget App</title>
     
+    <!-- Tailwind CSS voor styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Chart.js voor de grafiek -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
@@ -59,7 +62,8 @@
                  border: 1px solid #ccc !important;
             }
 
-            header, footer, #chart-switch, button[data-action], .modal-overlay, .flex.flex-wrap.gap-2.mb-6 {
+            /* Verberg elementen die niet geprint moeten worden */
+            header, footer, #chart-switch, button[data-action], .modal-overlay, .flex.flex-wrap.gap-2.mb-6, #import-btn, #export-btn, #reset-data-btn, #print-btn {
                 display: none !important;
             }
 
@@ -82,31 +86,33 @@
                 min-height: auto !important;
             }
 
-            /* Zorg ervoor dat alle grafieken zichtbaar zijn bij het printen */
+            /* Zorg ervoor dat ALLE grafieken zichtbaar zijn bij het printen */
             #chart-wrapper-incomes, #chart-wrapper-details, #chart-wrapper-summary {
+                display: flex !important; /* Forceer weergave */
+                flex-direction: column !important;
                 position: static !important;
-                display: block !important;
                 margin-bottom: 2rem;
                 page-break-inside: avoid;
             }
 
+            /* Aangepaste layout voor grafiek + legenda bij printen */
             .chart-legend-container {
                 display: block !important;
             }
             .chart-legend-container > .relative {
-                display: flex;
-                justify-content: center;
-                height: 250px;
-                margin: 0 auto 1rem auto;
-                max-width: 250px;
+                display: block !important;
+                width: 250px !important;
+                height: 250px !important;
+                margin: 0 auto 1rem auto !important; /* Center the chart container and add bottom margin */
             }
             .chart-legend-container > .relative > canvas {
-                max-width: 250px;
+                max-width: 100%;
+                max-height: 100%;
             }
             .chart-legend-container > div[id^="legend-"] {
                 width: 100%;
-                margin: 0 auto;
                 max-width: 400px;
+                margin: 0 auto !important; /* Center the legend */
             }
             
             /* Verbeterde lijstweergave voor printen */
@@ -133,10 +139,13 @@
             <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
                 Financieel Overzicht
             </h1>
+            <p class="text-gray-400 mt-2 text-lg">Krijg grip op je geld en begin met sparen voor je toekomst.</p>
         </header>
 
         <main>
+            <!-- Bovenste sectie: Samenvatting & Grafieken -->
             <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Samenvatting Kaarten -->
                 <div class="space-y-6">
                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-semibold text-gray-400 mb-2">Totaal Inkomen (Maandelijks)</h3>
@@ -154,6 +163,7 @@
                         <p class="text-sm text-gray-400 mt-1">Per maand</p>
                     </div>
                 </div>
+                <!-- Grafieken Container -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col">
                     <div class="flex-shrink-0">
                         <div class="flex justify-center mb-4 bg-gray-700 rounded-lg p-1" id="chart-switch">
@@ -163,6 +173,7 @@
                         </div>
                     </div>
                     <div class="flex-grow">
+                        <!-- Incomes Chart + Legend -->
                         <div id="chart-wrapper-incomes" class="flex-col hidden">
                             <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Inkomsten Verdeling</h3>
                             <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
@@ -172,6 +183,7 @@
                                 <div id="legend-incomes" class="text-sm space-y-1 overflow-y-auto max-h-full pr-2"></div>
                             </div>
                         </div>
+                        <!-- Details Chart + Legend -->
                         <div id="chart-wrapper-details" class="flex flex-col">
                             <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Details Alle Uitgaven</h3>
                             <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
@@ -181,6 +193,7 @@
                                 <div id="legend-details" class="text-sm space-y-1 overflow-y-auto max-h-full pr-2"></div>
                             </div>
                         </div>
+                        <!-- Summary Chart + Legend -->
                         <div id="chart-wrapper-summary" class="flex-col hidden">
                             <h3 class="flex-shrink-0 text-xl font-bold text-white mb-2 text-center">Uitgaven Hoofdgroepen</h3>
                             <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 items-center min-h-0 chart-legend-container">
@@ -194,6 +207,7 @@
                 </div>
             </section>
 
+            <!-- Onderste sectie: Inkomsten & Kostenlijsten -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div id="content-inkomsten"></div>
                 <div id="content-vaste"></div>
@@ -203,7 +217,8 @@
         </main>
         
         <footer class="text-center mt-12 text-gray-500 text-sm">
-            <p>Gaudam - 2025</p>
+            <p>Gemaakt om je te helpen je financiële doelen te bereiken.</p>
+            <p class="mb-4">Je woont in Zoetermeer en hebt een vast contract. Dit is een sterke basis!</p>
             <div class="flex justify-center flex-wrap gap-4">
                 <button id="import-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
                     Importeer Gegevens
@@ -221,8 +236,10 @@
         </footer>
     </div>
 
+    <!-- Hidden file input for import functionality -->
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
+    <!-- Reset Confirmation Modal -->
     <div id="reset-modal" class="modal-overlay hidden">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
             <h3 class="text-xl font-bold text-white mb-4">Weet je het zeker?</h3>
@@ -376,11 +393,11 @@
                 document.getElementById('content-abonnementen').innerHTML = createListHTML('Abonnementen', state.subscriptions, 'subscriptions');
             };
 
-            const getChartOptions = () => ({
+            const getChartOptions = (isForPrint = false) => ({
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: isForPrint, // THE ACTUAL FIX: false on screen, true for print
                 animation: {
-                    duration: 0 // disable animations for printing
+                    duration: isForPrint ? 0 : 1000 // disable animations for printing
                 },
                 plugins: {
                     legend: { display: false },
@@ -446,24 +463,21 @@
                     datasets: [{
                         data: legendData.map(i => i.value),
                         backgroundColor: legendData.map(i => i.color),
-                        borderColor: isForPrint ? '#ffffff' : '#1f2937', borderWidth: 2, hoverOffset: 4
+                        borderColor: isForPrint ? '#000000' : '#1f2937',
+                        borderWidth: isForPrint ? 1 : 2,
                     }]
                 };
                 
                 const renderChart = () => {
                     if (state.incomes.length > 0) {
-                        incomesChartInstance = new Chart(incomesChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                        incomesChartInstance = new Chart(incomesChartCanvas, { type: 'doughnut', data, options: getChartOptions(isForPrint) });
                     } else {
                         drawEmptyChartText(incomesChartCanvas, 'Voeg inkomsten toe.');
                         updateLegend('legend-incomes', []);
                     }
                 };
-
-                if (isForPrint) {
-                    renderChart();
-                } else {
-                    setTimeout(renderChart, 0);
-                }
+                
+                renderChart();
             };
 
             const updateExpensesChart = (isForPrint = false) => {
@@ -490,24 +504,21 @@
                     datasets: [{
                         data: legendData.map(i => i.value),
                         backgroundColor: legendData.map(i => i.color),
-                        borderColor: isForPrint ? '#ffffff' : '#1f2937', borderWidth: 2, hoverOffset: 4
+                        borderColor: isForPrint ? '#000000' : '#1f2937',
+                        borderWidth: isForPrint ? 1 : 2,
                     }]
                 };
                 
                 const renderChart = () => {
                     if (data.datasets[0].data.some(v => v > 0)) {
-                        expensesChartInstance = new Chart(expensesChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                        expensesChartInstance = new Chart(expensesChartCanvas, { type: 'doughnut', data, options: getChartOptions(isForPrint) });
                     } else {
                         drawEmptyChartText(expensesChartCanvas, 'Voeg uitgaven toe.');
                         updateLegend('legend-summary', []);
                     }
                 };
-
-                if (isForPrint) {
-                    renderChart();
-                } else {
-                    setTimeout(renderChart, 0);
-                }
+                
+                renderChart();
             };
 
             const updateAllExpensesDetailChart = (isForPrint = false) => {
@@ -530,24 +541,21 @@
                     datasets: [{
                         data: legendData.map(i => i.value),
                         backgroundColor: legendData.map(i => i.color),
-                        borderColor: isForPrint ? '#ffffff' : '#1f2937', borderWidth: 2, hoverOffset: 4
+                        borderColor: isForPrint ? '#000000' : '#1f2937',
+                        borderWidth: isForPrint ? 1 : 2,
                     }]
                 };
 
                 const renderChart = () => {
                     if (allExpenses.length > 0) {
-                        allExpensesDetailChartInstance = new Chart(allExpensesDetailChartCanvas, { type: 'doughnut', data, options: getChartOptions() });
+                        allExpensesDetailChartInstance = new Chart(allExpensesDetailChartCanvas, { type: 'doughnut', data, options: getChartOptions(isForPrint) });
                     } else {
                         drawEmptyChartText(allExpensesDetailChartCanvas, 'Geen uitgaven gevonden.');
                         updateLegend('legend-details', []);
                     }
                 };
-
-                if (isForPrint) {
-                    renderChart();
-                } else {
-                    setTimeout(renderChart, 0);
-                }
+                
+                renderChart();
             };
 
             const updateChartVisibility = () => {
@@ -559,10 +567,9 @@
                 document.getElementById('chart-wrapper-details').classList.toggle('hidden', !detailsVisible);
                 document.getElementById('chart-wrapper-summary').classList.toggle('hidden', !summaryVisible);
                 
-                // Show the parent flex container
-                if (incomesVisible) document.getElementById('chart-wrapper-incomes').classList.add('flex');
-                if (detailsVisible) document.getElementById('chart-wrapper-details').classList.add('flex');
-                if (summaryVisible) document.getElementById('chart-wrapper-summary').classList.add('flex');
+                document.getElementById('chart-wrapper-incomes').classList.toggle('flex', incomesVisible);
+                document.getElementById('chart-wrapper-details').classList.toggle('flex', detailsVisible);
+                document.getElementById('chart-wrapper-summary').classList.toggle('flex', summaryVisible);
 
                 chartSwitch.querySelectorAll('.chart-button').forEach(button => {
                     const isSelected = button.dataset.chart === state.activeChart;
@@ -573,13 +580,9 @@
                     button.classList.toggle('hover:bg-gray-600', !isSelected);
                 });
 
-                if (incomesVisible) {
-                    updateIncomesChart();
-                } else if (detailsVisible) {
-                    updateAllExpensesDetailChart();
-                } else {
-                    updateExpensesChart();
-                }
+                if (incomesVisible) updateIncomesChart();
+                else if (detailsVisible) updateAllExpensesDetailChart();
+                else updateExpensesChart();
             };
 
             // --- EVENT LISTENERS ---
@@ -707,20 +710,48 @@
                 location.reload();
             });
 
-            // Print button listener
-            document.getElementById('print-btn').addEventListener('click', () => {
-                // Re-render all charts specifically for printing without setTimeout
+            // --- PRINT FUNCTIONALITY ---
+            const printBtn = document.getElementById('print-btn');
+            const chartWrappers = [
+                document.getElementById('chart-wrapper-incomes'),
+                document.getElementById('chart-wrapper-details'),
+                document.getElementById('chart-wrapper-summary')
+            ];
+
+            const prepareForPrint = () => {
+                // Make all chart wrappers visible
+                chartWrappers.forEach(wrapper => {
+                    wrapper.classList.remove('hidden');
+                    wrapper.style.display = 'flex'; // Use inline style to override tailwind's hidden class
+                });
+
+                // Re-render all charts for printing (no animation)
                 updateIncomesChart(true);
                 updateAllExpensesDetailChart(true);
                 updateExpensesChart(true);
+            };
 
-                // Wait for the next browser frame to ensure charts are drawn
+            const cleanupAfterPrint = () => {
+                // Remove inline styles and restore original visibility
+                chartWrappers.forEach(wrapper => {
+                    wrapper.style.display = '';
+                });
+                updateChartVisibility();
+            };
+            
+            printBtn.addEventListener('click', () => {
+                prepareForPrint();
+                
+                // Wait for the next browser frame to ensure the DOM has been updated
                 requestAnimationFrame(() => {
+                    // Wait one more frame to be sure the canvases have been painted
                     requestAnimationFrame(() => {
-                         window.print();
+                        window.print();
                     });
                 });
             });
+
+            window.onafterprint = cleanupAfterPrint;
             
             // --- INITIAL RENDER ---
             render();
